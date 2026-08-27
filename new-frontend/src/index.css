@@ -1,0 +1,147 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+
+  /* Authentic Tabela Grayscale */
+  --color-surface-base: #f0f0f0;
+  --color-surface-card: #ffffff;
+  --color-surface-dark: #27272a;
+  /* For contrasting dark cards */
+  --color-surface-darker: #18181b;
+
+  /* Text Colors */
+  --color-text-main: #111111;
+  --color-text-muted: #71717a;
+  --color-text-light: #a1a1aa;
+
+  /* Authentic Tabela Accent (Pale Lime/Chartreuse) */
+  --color-accent-lime: #d9f13b;
+  --color-accent-lime-hover: #c4dc2a;
+
+  --animate-waveform: waveform 1.2s ease-in-out infinite;
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-fade-in: fadeIn 0.4s ease-out forwards;
+  --animate-slide-up: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes waveform {
+
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+
+  50% {
+    transform: scaleY(1.1);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-surface-base);
+  color: var(--color-text-main);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0d9488 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bg-dot-pattern {
+  background-image: radial-gradient(#e2e8f0 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+
+/* Interactive custom ranges styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  background: #cbd5e1;
+  height: 4px;
+  border-radius: 2px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -6px;
+  /* Center track */
+  background-color: #0d9488;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* Custom focus ring */
+*:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 2px;
+}
+
+/* Waveform height classes for inline styles */
+.wave-bar {
+  transform-origin: bottom;
+  transition: height 0.15s ease;
+}

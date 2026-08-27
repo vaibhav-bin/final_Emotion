@@ -1,0 +1,38 @@
+﻿src/components/AppShell.tsx(14,10): error TS1484: 'Operator' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/AudioPlayer.tsx(2,52): error TS6133: 'Gauge' is declared but its value is never read.
+src/components/AudioPlayer.tsx(2,59): error TS6133: 'Share' is declared but its value is never read.
+src/components/EmotionIndicators.tsx(2,10): error TS1484: 'EmotionMetric' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/HumanReview.tsx(2,10): error TS1484: 'RiskCategory' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/HumanReview.tsx(2,24): error TS1484: 'CaseAssessment' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/HumanReview.tsx(3,42): error TS6133: 'Edit3' is declared but its value is never read.
+src/components/ProcessingPipeline.tsx(2,24): error TS6133: 'RotateCw' is declared but its value is never read.
+src/components/ProcessingPipeline.tsx(2,34): error TS6133: 'Play' is declared but its value is never read.
+src/components/ProcessingPipeline.tsx(2,40): error TS6133: 'PlayCircle' is declared but its value is never read.
+src/components/SpeechAnalysis.tsx(2,10): error TS1484: 'SpeechMetrics' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/SpeechAnalysis.tsx(3,10): error TS6133: 'Activity' is declared but its value is never read.
+src/components/SpeechAnalysis.tsx(3,20): error TS6133: 'AlertOctagon' is declared but its value is never read.
+src/components/SpeechAnalysis.tsx(3,34): error TS6133: 'Heart' is declared but its value is never read.
+src/components/SpeechAnalysis.tsx(3,46): error TS6133: 'Sliders' is declared but its value is never read.
+src/components/SVIVisualization.tsx(2,10): error TS1484: 'RiskCategory' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/SVIVisualization.tsx(3,29): error TS6133: 'Percent' is declared but its value is never read.
+src/components/TranscriptViewer.tsx(2,10): error TS1484: 'TranscriptItem' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/TranscriptViewer.tsx(12,12): error TS6133: 'hoveredIdx' is declared but its value is never read.
+src/components/VulnerabilityIndicators.tsx(2,10): error TS1484: 'VulnerabilityMetric' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/VulnerabilityIndicators.tsx(3,33): error TS6133: 'Smile' is declared but its value is never read.
+src/components/Waveform.tsx(1,25): error TS1484: 'MouseEvent' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/AnalysisDetail.tsx(14,10): error TS1484: 'CaseAssessment' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/AnalysisDetail.tsx(14,26): error TS1484: 'RiskCategory' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/AnalysisDetail.tsx(14,26): error TS6133: 'RiskCategory' is declared but its value is never read.
+src/pages/AnalysisDetail.tsx(30,11): error TS6133: 'navigate' is declared but its value is never read.
+src/pages/Dashboard.tsx(16,10): error TS1484: 'CaseAssessment' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/Dashboard.tsx(16,26): error TS1484: 'RiskCategory' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/Settings.tsx(3,10): error TS1484: 'Operator' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/VoiceAnalysis.tsx(3,70): error TS6133: 'FileAudio' is declared but its value is never read.
+src/pages/VoiceAnalysis.tsx(4,10): error TS1484: 'CaseAssessment' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/services/analysisService.ts(1,10): error TS1484: 'CaseAssessment' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/services/analysisService.ts(1,26): error TS1484: 'RiskCategory' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/services/analysisService.ts(1,40): error TS1484: 'AssessmentStatus' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/services/analysisService.ts(318,25): error TS6133: 'fileOrName' is declared but its value is never read.
+src/services/authService.ts(1,10): error TS1484: 'Operator' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/services/authService.ts(1,20): error TS1484: 'AuthState' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/services/authService.ts(1,20): error TS6133: 'AuthState' is declared but its value is never read.
