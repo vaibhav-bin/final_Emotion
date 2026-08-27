@@ -8,7 +8,8 @@ import type {
     VulnerabilityMetric,
     ExplainabilityPoint,
     StatutoryRecommendation,
-    SubScores
+    SubScores,
+    ActionLogItem
 } from '../types';
 
 const API_BASE_URL = ''; // Relative path leverages Vite proxy or direct same-origin
@@ -438,19 +439,48 @@ export const analysisService = {
         return updated;
     },
 
-    saveOperatorReview(id: string, notes: string, flagged: boolean, confirmedRisk?: RiskCategory, reviewerName: string = 'Current Operator'): CaseAssessment | null {
+    saveOperatorReview(
+        id: string,
+        notes: string,
+        flagged: boolean,
+        confirmedRisk?: RiskCategory,
+        newStatus: AssessmentStatus = 'COMPLETE',
+        reviewerName: string = 'Authorized Triage Officer'
+    ): CaseAssessment | null {
         const item = this.getCaseById(id);
         if (!item) return null;
 
+        const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const existingLogs = item.actionLog || [
+            { timestamp: item.time, action: 'AI Assessment Generated', actor: 'Sahaaya Multimodal AI Head', details: `Initial SVI: ${item.svi}/100 (${item.risk} Risk)` }
+        ];
+
+        const newLogEntries: ActionLogItem[] = [
+            { timestamp: nowTime, action: `Risk Confirmed as ${confirmedRisk || item.risk}`, actor: reviewerName },
+        ];
+
+        if (flagged) {
+            newLogEntries.push({ timestamp: nowTime, action: 'Flagged for Senior Supervisor Escort', actor: reviewerName, details: 'Urgent supervision requested' });
+        }
+        if (notes && notes.trim()) {
+            newLogEntries.push({ timestamp: nowTime, action: 'Officer Review Note Appended', actor: reviewerName, details: notes.trim() });
+        }
+        if (newStatus === 'ESCALATED_POLICE') {
+            newLogEntries.push({ timestamp: nowTime, action: 'Case Escalated to District Police & DLSA', actor: reviewerName, details: 'Section 15A Protection protocol triggered' });
+        }
+
         const updated: CaseAssessment = {
             ...item,
+            status: newStatus,
+            actionLog: [...existingLogs, ...newLogEntries],
             operatorReview: {
                 isReviewed: true,
                 confirmedRisk: confirmedRisk || item.risk,
                 flagged,
                 notes,
                 reviewedBy: reviewerName,
-                reviewedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                reviewedAt: nowTime,
+                status: newStatus,
             },
         };
 
@@ -461,7 +491,7 @@ export const analysisService = {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                status: flagged ? 'ESCALATED_POLICE' : 'REVIEWED',
+                status: newStatus,
                 officer_notes: notes,
             }),
         }).catch(() => {});

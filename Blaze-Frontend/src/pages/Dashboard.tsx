@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
     Activity,
@@ -9,7 +9,9 @@ import {
     Headphones,
     CheckCircle2,
     Plus,
-    Trash2
+    Trash2,
+    ShieldAlert,
+    Radio
 } from 'lucide-react';
 import type { CaseAssessment, RiskCategory } from '../types';
 import { analysisService } from '../services/analysisService';
@@ -18,6 +20,7 @@ const Dashboard: React.FC = () => {
     const navigate = useNavigate();
     const [cases, setCases] = useState<CaseAssessment[]>([]);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [selectedFilter, setSelectedFilter] = useState<'ALL' | RiskCategory>('ALL');
 
     const loadCases = () => {
         analysisService.fetchCasesAsync().then((data) => {
@@ -67,20 +70,92 @@ const Dashboard: React.FC = () => {
         }
     };
 
+    // Triage Priority Ordering: CRITICAL -> HIGH -> MODERATE -> LOW -> Highest SVI
+    const prioritizedCases = useMemo(() => {
+        const riskWeights: Record<RiskCategory, number> = {
+            CRITICAL: 4,
+            HIGH: 3,
+            MODERATE: 2,
+            LOW: 1,
+        };
+
+        const sorted = [...cases].sort((a, b) => {
+            const weightA = riskWeights[a.risk] || 0;
+            const weightB = riskWeights[b.risk] || 0;
+            if (weightA !== weightB) {
+                return weightB - weightA;
+            }
+            return (b.svi || 0) - (a.svi || 0);
+        });
+
+        if (selectedFilter === 'ALL') {
+            return sorted;
+        }
+        return sorted.filter((c) => c.risk === selectedFilter);
+    }, [cases, selectedFilter]);
+
+    // Check for active critical emergency alert
+    const activeCriticalCase = useMemo(() => {
+        return cases.find(c => c.risk === 'CRITICAL' && !c.operatorReview?.isReviewed);
+    }, [cases]);
+
     const totalAnalyses = cases.length;
     const highRiskCount = cases.filter(c => c.risk === 'HIGH').length;
     const criticalCount = cases.filter(c => c.risk === 'CRITICAL').length;
     const moderateOrLowCount = cases.filter(c => c.risk === 'MODERATE' || c.risk === 'LOW').length;
 
     return (
-        <div className="space-y-8 animate-fade-in text-zinc-900">
+        <div className="space-y-8 animate-fade-in text-zinc-900 pb-10">
+
+            {/* Live Critical / High-Risk Alert Banner (P0.3) */}
+            {activeCriticalCase && (
+                <div className="bg-zinc-900 text-white rounded-3xl p-5 md:p-6 border border-zinc-800 shadow-2xl relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-scale-in">
+                    <div className="absolute -right-10 -top-10 w-40 h-40 bg-red-600/20 rounded-full blur-3xl pointer-events-none"></div>
+                    
+                    <div className="flex items-start gap-4 relative z-10">
+                        <div className="w-11 h-11 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center shrink-0">
+                            <ShieldAlert size={22} className="animate-pulse" />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-mono font-bold tracking-widest text-red-400 uppercase bg-red-950/60 border border-red-800/60 px-2 py-0.5 rounded">
+                                    CRITICAL TRIAGE ALERT
+                                </span>
+                                <span className="text-xs text-zinc-400 font-mono">
+                                    Case #{activeCriticalCase.id} • SVI {activeCriticalCase.svi}/100
+                                </span>
+                            </div>
+                            <h3 className="text-sm font-bold text-white mt-1">
+                                Urgent Victim Protection & Police Escalation Required
+                            </h3>
+                            <p className="text-xs text-zinc-300 font-light mt-0.5">
+                                High acute distress and physical threat signals detected. Immediate human officer review mandatory.
+                            </p>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={() => navigate(`/analysis/${activeCriticalCase.id}`)}
+                        className="px-6 py-2.5 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-full text-xs transition-all shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                    >
+                        <span>Open Critical Case</span>
+                        <ArrowRight size={14} />
+                    </button>
+                </div>
+            )}
 
             {/* Welcome Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-200/80 pb-6">
                 <div>
-                    <h2 className="font-display font-medium text-3xl text-black tracking-tight">
-                        {getGreeting()}, Officer.
-                    </h2>
+                    <div className="flex items-center gap-2">
+                        <h2 className="font-display font-medium text-3xl text-black tracking-tight">
+                            {getGreeting()}, Officer.
+                        </h2>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                            <Radio size={10} className="animate-pulse text-emerald-600" />
+                            Live Sync Active
+                        </span>
+                    </div>
                     <p className="text-zinc-500 text-sm mt-1.5 font-light">
                         National Helpline Against Atrocities (14566) • AI-assisted Triage & Vulnerability Screening Console.
                     </p>
@@ -132,7 +207,7 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="mt-6 relative z-10">
                         <h4 className="font-display font-medium text-4xl">{criticalCount}</h4>
-                        <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mt-1">Critical Risk</p>
+                        <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mt-1">Critical Priority</p>
                     </div>
                 </div>
 
@@ -166,8 +241,6 @@ const Dashboard: React.FC = () => {
 
                 {/* Pipeline Flow Container */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-3 relative px-2 mb-2">
-
-                    {/* Connectors */}
                     <div className="hidden md:flex items-center w-[25%] absolute left-[12.5%] top-[1.25rem] z-0 px-4">
                         <div className="w-full h-[1px] bg-zinc-200"></div>
                     </div>
@@ -186,9 +259,9 @@ const Dashboard: React.FC = () => {
                             <CheckCircle2 size={16} />
                         </div>
                         <span className="text-[9px] uppercase font-bold tracking-widest text-zinc-400">Node // 01</span>
-                        <span className="font-display font-medium text-black mt-1 text-sm tracking-wide">RECEIVED</span>
+                        <span className="font-display font-medium text-black mt-1 text-sm tracking-wide">INGESTION</span>
                         <p className="text-xs text-zinc-500 mt-1 font-light text-center md:text-left leading-relaxed max-w-[90%]">
-                            Audio stream ingested.
+                            16kHz PCM audio stream.
                         </p>
                     </div>
 
@@ -198,9 +271,9 @@ const Dashboard: React.FC = () => {
                             <CheckCircle2 size={16} />
                         </div>
                         <span className="text-[9px] uppercase font-bold tracking-widest text-zinc-400">Node // 02</span>
-                        <span className="font-display font-medium text-black mt-1 text-sm tracking-wide">TRANSCRIBING</span>
+                        <span className="font-display font-medium text-black mt-1 text-sm tracking-wide">SARVAM STT</span>
                         <p className="text-xs text-zinc-500 mt-1 font-light text-center md:text-left leading-relaxed max-w-[90%]">
-                            Sarvam Saaras STT & MuRIL NLP.
+                            Saaras v3 STT & word timestamps.
                         </p>
                     </div>
 
@@ -210,9 +283,9 @@ const Dashboard: React.FC = () => {
                             <span className="w-2 h-2 rounded-full bg-black animate-pulse"></span>
                         </div>
                         <span className="text-[9px] uppercase font-bold tracking-widest text-lime-600">Node // 03</span>
-                        <span className="font-display font-medium text-black mt-1 text-sm tracking-wide">ANALYSING</span>
+                        <span className="font-display font-medium text-black mt-1 text-sm tracking-wide">INDIC REASONER</span>
                         <p className="text-xs text-zinc-500 mt-1 font-light text-center md:text-left leading-relaxed max-w-[90%]">
-                            WavLM & Gated Cross-Attention.
+                            Qwen2.5 & emotion2vec+ SER.
                         </p>
                     </div>
 
@@ -222,35 +295,51 @@ const Dashboard: React.FC = () => {
                             <Clock size={16} />
                         </div>
                         <span className="text-[9px] uppercase font-bold tracking-widest text-zinc-400">Terminal // 04</span>
-                        <span className="font-display font-medium text-zinc-400 mt-1 text-sm tracking-wide">SOP ROUTING</span>
+                        <span className="font-display font-medium text-zinc-400 mt-1 text-sm tracking-wide">STATUTORY SOP</span>
                         <p className="text-xs text-zinc-400 mt-1 font-light text-center md:text-left leading-relaxed max-w-[90%]">
-                            Police PCR & Legal Aid.
+                            Sec 15A & Rule 12(4) relief.
                         </p>
                     </div>
 
                 </div>
             </div>
 
-            {/* RECENT ANALYSES Ledger Section */}
+            {/* TRIAGE PRIORITY QUEUE (P0.3) */}
             <div className="bg-white border border-zinc-200 rounded-3xl shadow-sm overflow-hidden">
                 <div className="p-6 border-b border-zinc-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <h3 className="font-display font-medium text-lg text-black">
-                            Case Assessment Ledger & SQLite Registry
+                        <h3 className="font-display font-medium text-lg text-black flex items-center gap-2">
+                            <span>Triage Priority Queue</span>
+                            <span className="text-xs font-mono font-normal text-zinc-400">({prioritizedCases.length} records)</span>
                         </h3>
+                        <p className="text-xs text-zinc-400 mt-0.5 font-light">
+                            Prioritized automatically by Stress Vulnerability Index (SVI) & Risk Classification
+                        </p>
+                    </div>
+
+                    {/* Triage Filter Tabs */}
+                    <div className="flex items-center gap-1 bg-zinc-100 p-1 rounded-full border border-zinc-200 text-xs font-mono">
+                        {(['ALL', 'CRITICAL', 'HIGH', 'MODERATE', 'LOW'] as const).map((filter) => (
+                            <button
+                                key={filter}
+                                onClick={() => setSelectedFilter(filter)}
+                                className={`px-3 py-1 rounded-full font-semibold transition-all cursor-pointer ${
+                                    selectedFilter === filter
+                                        ? 'bg-white text-zinc-900 shadow-xs font-bold'
+                                        : 'text-zinc-500 hover:text-zinc-800'
+                                }`}
+                            >
+                                {filter}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                {cases.length === 0 ? (
+                {prioritizedCases.length === 0 ? (
                     <div className="p-20 text-center max-w-sm mx-auto">
                         <Activity className="mx-auto text-zinc-300 stroke-[1.5]" size={36} />
-                        <h3 className="text-sm font-medium text-black mt-4">No cases logged in database</h3>
-                        <Link
-                            to="/analysis"
-                            className="inline-block mt-4 text-xs font-semibold text-zinc-500 hover:text-black"
-                        >
-                            Open Voice Analysis &rarr;
-                        </Link>
+                        <h3 className="text-sm font-medium text-black mt-4">No cases in {selectedFilter} queue</h3>
+                        <p className="text-xs text-zinc-400 mt-1">Adjust filters or create a new voice analysis.</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -261,12 +350,13 @@ const Dashboard: React.FC = () => {
                                     <th className="py-5 px-4 text-center">Dialect</th>
                                     <th className="py-5 px-4 font-mono text-center">Duration</th>
                                     <th className="py-5 px-4 text-center">SVI Score</th>
-                                    <th className="py-5 px-4 text-center">Risk Level</th>
+                                    <th className="py-5 px-4 text-center">Priority Tier</th>
+                                    <th className="py-5 px-4 text-center">Review Status</th>
                                     <th className="py-5 px-6 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-100">
-                                {cases.map((item) => (
+                                {prioritizedCases.map((item) => (
                                     <tr
                                         key={item.id}
                                         onClick={() => navigate(`/analysis/${item.id}`)}
@@ -298,13 +388,19 @@ const Dashboard: React.FC = () => {
                                         </td>
 
                                         <td className="py-5 px-4 text-center">
-                                            {item.status === 'COMPLETE' ? (
-                                                <span className={`inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full ${getRiskBadgeStyles(item.risk)}`}>
-                                                    {item.risk}
+                                            <span className={`inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full ${getRiskBadgeStyles(item.risk)}`}>
+                                                {item.risk}
+                                            </span>
+                                        </td>
+
+                                        <td className="py-5 px-4 text-center">
+                                            {item.operatorReview?.isReviewed ? (
+                                                <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-semibold">
+                                                    REVIEWED
                                                 </span>
                                             ) : (
-                                                <span className="inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-zinc-100 text-zinc-500 border border-zinc-200 animate-pulse">
-                                                    Working
+                                                <span className="text-[10px] font-mono text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full font-semibold">
+                                                    PENDING REVIEW
                                                 </span>
                                             )}
                                         </td>

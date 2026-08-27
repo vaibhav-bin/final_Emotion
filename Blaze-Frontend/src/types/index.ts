@@ -4,8 +4,19 @@ export type AssessmentStatus =
     | 'RECEIVED'
     | 'TRANSCRIBING'
     | 'ANALYSING'
-    | 'ASSESSMENT_READY'
-    | 'COMPLETE';
+    | 'AI_ASSESSED'
+    | 'ACKNOWLEDGED'
+    | 'UNDER_REVIEW'
+    | 'ESCALATED_POLICE'
+    | 'COMPLETE'
+    | 'RESOLVED';
+
+export interface ActionLogItem {
+    timestamp: string;
+    action: string;
+    actor: string;
+    details?: string;
+}
 
 export interface TranscriptItem {
     timestamp: string;
@@ -16,6 +27,8 @@ export interface TranscriptItem {
         type: 'fear' | 'intimidation' | 'vulnerability' | 'depression' | 'suicide' | 'isolation' | 'trauma';
         label: string;
         severity: 'LOW' | 'MEDIUM' | 'HIGH';
+        evidenceSource?: string;
+        confidence?: number;
     };
 }
 
@@ -61,10 +74,25 @@ export interface StatutoryRecommendation {
 }
 
 export interface SubScores {
-    linguistic_threat: number;
+    threat?: number;
+    fear?: number;
+    distress?: number;
+    trauma?: number;
     vocal_distress: number;
+    vulnerability?: number;
+    linguistic_threat: number;
     acoustic_panic: number;
     multimodal_co_occurrence: number;
+}
+
+export interface ProcessingTelemetry {
+    audioNormalization?: number;
+    speechRecognition?: number;
+    acousticProsody?: number;
+    emotionAnalysis?: number;
+    cognitiveReasoning?: number;
+    sviFusion?: number;
+    totalSec?: number;
 }
 
 export interface CaseAssessment {
@@ -76,6 +104,7 @@ export interface CaseAssessment {
     risk: RiskCategory;
     status: AssessmentStatus;
     confidence: number; // percentage
+    signalAgreement?: 'HIGH' | 'MEDIUM' | 'LOW';
     speechMetrics: SpeechMetrics;
     emotions: EmotionMetric[];
     vulnerabilities: VulnerabilityMetric[];
@@ -90,6 +119,8 @@ export interface CaseAssessment {
     primaryAction?: string;
     urgencyLevel?: string;
     audioUrl?: string;
+    actionLog?: ActionLogItem[];
+    processingTelemetry?: ProcessingTelemetry;
     rawReport?: any;
     operatorReview?: {
         isReviewed: boolean;
@@ -98,6 +129,7 @@ export interface CaseAssessment {
         notes: string;
         reviewedBy?: string;
         reviewedAt?: string;
+        status?: AssessmentStatus;
     };
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 
 interface ProcessingPipelineProps {
     onComplete: () => void;
@@ -7,14 +7,13 @@ interface ProcessingPipelineProps {
 }
 
 const STAGES = [
-    'VOICE RECEIVED',
-    'LANGUAGE IDENTIFIED',
-    'SPEECH TRANSCRIBED',
-    'SPEECH PATTERNS ANALYSED',
-    'EMOTIONAL INDICATORS ANALYSED',
-    'TRAUMA INDICATORS ANALYSED',
-    'VULNERABILITY ASSESSED',
-    'GENERATING SVI'
+    { label: 'AUDIO NORMALIZATION (16kHz PCM)', model: 'FFmpeg Core' },
+    { label: 'SPEECH RECOGNITION & DIALECT', model: 'Sarvam Saaras v3' },
+    { label: 'ACOUSTIC PROSODY & JITTER', model: 'Librosa & SciPy' },
+    { label: 'SPEECH EMOTION EMBEDDINGS', model: 'emotion2vec+ Large' },
+    { label: 'COGNITIVE FORENSIC REASONING', model: 'Local Qwen2.5 Indic LLM' },
+    { label: 'STATUTORY SOP SYNTHESIS', model: 'SC/ST PoA Sec 15A / Rule 12(4)' },
+    { label: 'MULTIMODAL SVI FUSION HEAD', model: 'Composite Calibration' }
 ];
 
 const ProcessingPipeline: React.FC<ProcessingPipelineProps> = ({ onComplete, isStarted }) => {
@@ -22,8 +21,6 @@ const ProcessingPipeline: React.FC<ProcessingPipelineProps> = ({ onComplete, isS
 
     useEffect(() => {
         if (!isStarted) return;
-
-        // Start at index 0
         setCurrentIdx(0);
     }, [isStarted]);
 
@@ -33,11 +30,10 @@ const ProcessingPipeline: React.FC<ProcessingPipelineProps> = ({ onComplete, isS
         if (currentIdx < STAGES.length) {
             const timer = setTimeout(() => {
                 setCurrentIdx(prev => prev + 1);
-            }, 750); // Speed of the automated parser sequence (750ms per stage)
+            }, 600); // 600ms per stage
 
             return () => clearTimeout(timer);
         } else {
-            // Completed last stage! Trigger callback
             onComplete();
         }
     }, [currentIdx, onComplete]);
@@ -45,15 +41,20 @@ const ProcessingPipeline: React.FC<ProcessingPipelineProps> = ({ onComplete, isS
     if (!isStarted) return null;
 
     return (
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm shadow-slate-100/30 max-w-md w-full mx-auto animate-fade-in select-none">
-            <div className="flex items-center gap-2.5 mb-6">
-                <Loader2 className="w-5 h-5 text-teal-600 animate-spin" />
-                <h3 className="font-display font-semibold text-slate-800 text-sm">
-                    Processing AI Assessment Pipeline
-                </h3>
+        <div className="bg-white border border-zinc-200 rounded-3xl p-6 md:p-7 shadow-xl max-w-md w-full mx-auto animate-scale-in select-none text-zinc-900 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+                <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 text-zinc-900 animate-spin" />
+                    <h3 className="font-display font-medium text-black text-sm">
+                        Executing Multimodal Triage Pipeline
+                    </h3>
+                </div>
+                <span className="text-[9px] font-mono font-bold bg-zinc-100 px-2 py-0.5 rounded-full border border-zinc-200">
+                    STAGE {Math.min(currentIdx + 1, STAGES.length)}/{STAGES.length}
+                </span>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-2.5">
                 {STAGES.map((stage, index) => {
                     const isDone = index < currentIdx;
                     const isActive = index === currentIdx;
@@ -61,27 +62,37 @@ const ProcessingPipeline: React.FC<ProcessingPipelineProps> = ({ onComplete, isS
 
                     return (
                         <div
-                            key={stage}
-                            className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-300 ${isActive
-                                ? 'bg-teal-50/40 border-teal-200 text-slate-800 scale-[1.01] shadow-xs'
-                                : isDone
-                                    ? 'bg-slate-50/50 border-slate-100 text-slate-500'
-                                    : 'bg-white border-transparent text-slate-350'
-                                }`}
+                            key={stage.label}
+                            className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-300 ${
+                                isActive
+                                    ? 'bg-zinc-900 border-zinc-900 text-white shadow-sm scale-[1.01]'
+                                    : isDone
+                                        ? 'bg-zinc-50 border-zinc-200 text-zinc-700'
+                                        : 'bg-white border-transparent text-zinc-400'
+                            }`}
                         >
-                            <span className={`text-xs font-mono font-semibold tracking-wider ${isActive ? 'text-teal-700' : ''}`}>
-                                {stage}
-                            </span>
+                            <div className="space-y-0.5">
+                                <span className={`text-[11px] font-mono font-bold block tracking-tight ${
+                                    isActive ? 'text-white' : isDone ? 'text-zinc-900' : 'text-zinc-400'
+                                }`}>
+                                    {stage.label}
+                                </span>
+                                <span className={`text-[10px] font-mono ${
+                                    isActive ? 'text-zinc-300' : 'text-zinc-400'
+                                }`}>
+                                    {stage.model}
+                                </span>
+                            </div>
 
                             <div className="flex items-center">
                                 {isDone && (
-                                    <CheckCircle2 size={16} className="text-emerald-500 stroke-[2.5]" />
+                                    <CheckCircle2 size={16} className="text-emerald-600 stroke-[2.5]" />
                                 )}
                                 {isActive && (
-                                    <span className="w-2 h-2 bg-teal-500 rounded-full animate-ping"></span>
+                                    <span className="w-2.5 h-2.5 bg-[var(--color-accent-lime)] rounded-full animate-pulse"></span>
                                 )}
                                 {isPending && (
-                                    <span className="w-1.5 h-1.5 bg-slate-200 rounded-full"></span>
+                                    <span className="w-1.5 h-1.5 bg-zinc-200 rounded-full"></span>
                                 )}
                             </div>
                         </div>
@@ -89,10 +100,13 @@ const ProcessingPipeline: React.FC<ProcessingPipelineProps> = ({ onComplete, isS
                 })}
             </div>
 
-            <div className="mt-6 text-center">
-                <p className="text-[10px] text-slate-400 font-mono tracking-wide uppercase">
-                    {currentIdx < STAGES.length ? 'Analysing acoustic parameters...' : 'Assessment complete.'}
-                </p>
+            <div className="pt-2 text-center border-t border-zinc-100 flex items-center justify-center gap-1.5 text-[11px] text-zinc-500 font-light">
+                <Sparkles size={12} className="text-zinc-500" />
+                <span>
+                    {currentIdx < STAGES.length
+                        ? 'Synthesizing acoustic, emotion, and cognitive telemetry...'
+                        : 'Assessment successfully finalized.'}
+                </span>
             </div>
         </div>
     );

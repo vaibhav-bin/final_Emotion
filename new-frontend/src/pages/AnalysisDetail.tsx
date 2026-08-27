@@ -9,7 +9,6 @@ import {
     AlertTriangle,
     TrendingUp,
     Scale,
-    Activity,
     Trash2,
     Volume2,
     FileText,
@@ -436,66 +435,9 @@ const AnalysisDetail: React.FC = () => {
                         score={item.svi}
                         risk={item.risk}
                         confidence={item.confidence}
+                        signalAgreement={item.signalAgreement || (item.svi > 70 ? 'HIGH' : 'MEDIUM')}
+                        subScores={item.subScores}
                     />
-
-                    {/* Sub-scores Progress Breakdown */}
-                    {item.subScores && (
-                        <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4 select-none">
-                            <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
-                                <div>
-                                    <h3 className="font-display font-medium text-base text-zinc-800">
-                                        Multimodal Sub-Score Weights
-                                    </h3>
-                                    <p className="text-xs text-zinc-400 mt-0.5 font-light">
-                                        Narrative context (65%), vocal emotion, and acoustic biomarkers
-                                    </p>
-                                </div>
-                                <Activity size={16} className="text-zinc-400" />
-                            </div>
-
-                            <div className="space-y-3.5 pt-1">
-                                <div className="space-y-1">
-                                    <div className="flex justify-between text-xs font-semibold text-zinc-700">
-                                        <span>📝 Cognitive Narrative Context (55% SVI)</span>
-                                        <span className="font-mono text-zinc-900">{item.subScores.linguistic_threat}%</span>
-                                    </div>
-                                    <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
-                                        <div className="h-full bg-zinc-900 rounded-full transition-all duration-700" style={{ width: `${item.subScores.linguistic_threat}%` }}></div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <div className="flex justify-between text-xs font-semibold text-zinc-700">
-                                        <span>🎙️ Vocal Emotion Distress (15% SVI)</span>
-                                        <span className="font-mono text-zinc-900">{item.subScores.vocal_distress}%</span>
-                                    </div>
-                                    <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
-                                        <div className="h-full bg-amber-500 rounded-full transition-all duration-700" style={{ width: `${item.subScores.vocal_distress}%` }}></div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <div className="flex justify-between text-xs font-semibold text-zinc-700">
-                                        <span>🔊 Acoustic Prosody Biomarkers (10% SVI)</span>
-                                        <span className="font-mono text-zinc-900">{item.subScores.acoustic_panic}%</span>
-                                    </div>
-                                    <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
-                                        <div className="h-full bg-zinc-600 rounded-full transition-all duration-700" style={{ width: `${item.subScores.acoustic_panic}%` }}></div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <div className="flex justify-between text-xs font-semibold text-zinc-700">
-                                        <span>⚡ Cross-Attention Synchronization (10% SVI)</span>
-                                        <span className="font-mono text-zinc-900">{item.subScores.multimodal_co_occurrence}%</span>
-                                    </div>
-                                    <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
-                                        <div className="h-full bg-teal-600 rounded-full transition-all duration-700" style={{ width: `${item.subScores.multimodal_co_occurrence}%` }}></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                     {/* Speech Analytics (Prosody Waveform, Pauses, Jitter) */}
                     <SpeechAnalysis metrics={item.speechMetrics} />
@@ -515,8 +457,22 @@ const AnalysisDetail: React.FC = () => {
                 <HumanReview
                     caseId={item.id}
                     initialRisk={item.risk}
+                    actionLog={item.actionLog}
                     onReviewSaved={handleReviewSaved}
                 />
+            </div>
+
+            {/* RESPONSIBLE AI GOVERNANCE DISCLAIMER FOOTER */}
+            <div className="border-t border-zinc-200/80 pt-6 mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] text-zinc-400 font-light select-none">
+                <div className="flex items-center gap-2">
+                    <ShieldCheck size={14} className="text-zinc-500 shrink-0" />
+                    <span>
+                        <strong className="text-zinc-600 font-medium">Responsible AI Mandate:</strong> AI-assisted psychological & legal risk screening tool for NHAA 14566 triage. Not a clinical psychiatric diagnosis or judicial determination. Final statutory decisions remain with authorized personnel.
+                    </span>
+                </div>
+                <span className="font-mono text-[10px] text-zinc-400 shrink-0">
+                    MoSJE / NHAA 14566 • v2.5.0-PROD
+                </span>
             </div>
 
         </div>
