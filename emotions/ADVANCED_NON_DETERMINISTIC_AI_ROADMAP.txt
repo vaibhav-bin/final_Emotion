@@ -1,0 +1,262 @@
+====================================================================================================
+           NHAA (14566) MULTIMODAL AI-ASSISTED TRIAGE SYSTEM: ARCHITECTURAL ROADMAP
+        NON-DETERMINISTIC CONTEXTUAL REASONING & REAL-TIME OPEN-SOURCE LOCAL INFERENCE
+====================================================================================================
+Author: Antigravity AI Engineering
+Target System: National Helpline Against Atrocities (14566) & Integrated SC/ST Grievance Portal
+Domain: Real-time Multilingual Speech Prosody, Deep Acoustic Emotion, Indic NLP & Generative SOPs
+====================================================================================================
+
+TABLE OF CONTENTS:
+1. EXECUTIVE SUMMARY & LIMITATIONS OF KEYWORD-BASED DETERMINISTIC NLP
+2. ARCHITECTURE 1: OPEN-SOURCE LOCAL INDIC LLM REASONING (ELIMINATING KEYWORD BRITTLENESS)
+3. ARCHITECTURE 2: REAL-TIME STREAMING ACOUSTIC & VOCAL STRESS ESTIMATION (SLIDING WINDOW)
+4. ARCHITECTURE 3: GENERATIVE, CONTEXT-AWARE OPERATOR BRIEFINGS & DYNAMIC SOPs
+5. HARDWARE RESOURCE SIZING & DEPLOYMENT BLUEPRINT (TESLA T4 / A10G / ON-PREMISE)
+6. STEP-BY-STEP IMPLEMENTATION PLAN & SAMPLE PYTHON CODE BLUEPRINTS
+
+====================================================================================================
+1. EXECUTIVE SUMMARY & LIMITATIONS OF KEYWORD-BASED DETERMINISTIC NLP
+====================================================================================================
+
+Currently, standard grievance analysis systems employ a hybrid rule-lexicon approach:
+- MuRIL embeddings combined with keyword lists ("मार", "धमकी", "बहिष्कार", "जान", "मारपीट").
+- While effective as a fast baseline, dictionary/keyword heuristics exhibit critical vulnerabilities:
+  a) Out-of-Vocabulary (OOV) Synonyms & Dialects: Callers from rural Bundelkhand, Bhojpur, Marathwada,
+     or Coastal Andhra use regional idioms (e.g., "हमनी के पानी छुवे ना देत बा", "ஊர் பக்கம் வரக்கூடாது")
+     that bypass fixed keyword matchers.
+  b) Passive & Indirect Coercion: Statements like "They told us we can no longer walk on the main road
+     after sunset" or "My children have not eaten in two days because shops refuse to sell to us" describe
+     catastrophic atrocities (social boycott, illegal economic blockade) without using violent threat words.
+  c) Sarcasm, False Negatives & Code-Switching: Callers frequently mix Hinglish, Tanglish, or regional
+     slang. A static keyword engine assigns 0.0 linguistic threat to a high-trauma utterance if exact
+     stems are missing.
+
+SOLUTION:
+Shift from "Keyword-Matching" to "Generative Context-Aware Reasoning" using locally hosted open-source
+Large Language Models (LLMs) and End-to-End Multimodal Speech-Text Foundation Models that evaluate the
+entire situational context, structural power imbalance, and psychological distress semantics.
+
+====================================================================================================
+2. ARCHITECTURE 1: OPEN-SOURCE LOCAL INDIC LLM REASONING (NON-DETERMINISTIC)
+====================================================================================================
+
+To achieve high accuracy on Indian languages with non-deterministic contextual understanding, the
+system should deploy a local, quantized Instruction-Tuned Indic LLM.
+
+Recommended Open-Source Models (All deployable on GPU / local server without external APIs):
+----------------------------------------------------------------------------------------------------
+Model Name             Parameters   VRAM (4-bit)   Indic Performance   Key Strengths
+----------------------------------------------------------------------------------------------------
+1. Sarvam-1            2.0 Billion  ~2.5 GB        Very High (10 langs) Specialized on Indian dialects & idioms
+2. Llama-3.1-8B-Inst   8.0 Billion  ~5.8 GB        High (Hindi/Eng/Mix) Outstanding zero-shot reasoning & CoT
+3. Qwen2.5-7B-Instruct 7.0 Billion  ~5.2 GB        Very High (Multiling) Exceptional structured JSON output
+4. Airavata (AI4Bharat) 7.0 Billion ~5.5 GB        Very High (Hindi)    Fine-tuned specifically on Indic instruction
+5. Gemma-2-9B-It       9.0 Billion  ~6.8 GB        High (Multiling)     Deep nuance & sentiment comprehension
+----------------------------------------------------------------------------------------------------
+
+How It Works (Chain-of-Thought Contextual Reasoning):
+Instead of searching for keywords, the raw transcript is fed into a structured prompt that forces the
+model to think step-by-step:
+
+Prompt Schema:
+```
+[SYSTEM PROMPT]
+You are an expert psychological trauma evaluator and legal officer for the National Helpline
+Against Atrocities (SC/ST Prevention of Atrocities Act, 1989).
+Analyze the caller's grievance transcript. Do not rely on specific keywords; understand the deep
+situational context, fear indicators, coercion, displacement, social exclusion, and physical peril.
+
+Output valid JSON matching this schema:
+{
+  "contextual_summary": "Concise summary of the situation",
+  "inferred_crime_severity": "LOW | MEDIUM | HIGH | CRITICAL",
+  "atrocity_dimensions_detected": ["social_boycott", "physical_threat", "land_alienation", ...],
+  "psychological_distress_level": "MILD | HEIGHTENED | SEVERE | CRISIS",
+  "implicit_vulnerability_cues": ["Deprivation of water", "Fear of retaliation", ...],
+  "threat_score": 0-100,
+  "dynamic_briefing_for_officer": "What the operator needs to understand immediately",
+  "statutory_action_steps": ["Immediate police protection under Sec 15A", "DLSA advocate assignment", ...]
+}
+```
+
+Benefits:
+- Understands novel phrasing, indirect threats, and complex narratives with 0% reliance on keyword dictionaries.
+- Generates rich, human-like executive briefings and customized action checklists tailored to the unique case.
+
+====================================================================================================
+3. ARCHITECTURE 2: REAL-TIME STREAMING ACOUSTIC & VOCAL STRESS ESTIMATION
+====================================================================================================
+
+Currently, analysis is performed in batch mode upon file ingestion. To achieve TRUE REAL-TIME analysis
+while the caller is speaking, a chunked sliding-window audio pipeline is implemented:
+
+Pipeline Components:
+----------------------------------------------------------------------------------------------------
+1. Audio Ingestion Stream (WebRTC / WebSocket audio chunks, 16kHz PCM mono).
+2. Voice Activity Detection (VAD):
+   - Model: `Silero VAD v5` (runs locally in < 5ms per 30ms audio chunk).
+   - Drops silence, detects caller vs operator speech turns, and tracks pause durations.
+3. Continuous Sliding-Window Feature Extractor (Window size: 2.0s, Hop size: 0.5s):
+   - `Librosa / OpenSMILE (eGeMAPS acoustic parameter set)`:
+     * F0 Pitch Drift & Jitter (Vocal cord micro-tremor under acute panic).
+     * Shimmer & HNR (Harmonics-to-Noise Ratio - voice break under tearful/choked speech).
+     * Energy/RMS Dynamics (Sudden screams, whimpers, or voice drop).
+4. Local End-to-End SER (Speech Emotion Recognition):
+   - Model: `emotion2vec+ Large` or `WavLM-Large-Linear`.
+   - Produces continuous frame-level emotion probabilities (Fear, Sadness, Anger, Neutral).
+5. Continuous Multi-Modal Dynamic SVI Fusion Engine:
+   - Evaluates:
+     SVI(t) = 0.55 * LinguisticThreat(t) + 0.15 * VocalDistress(t) + 0.15 * AcousticPanic(t) + 0.15 * TemporalAlignment(t)
+   - Real-time gauge updates every 500ms on the operator's screen during an active live call.
+
+====================================================================================================
+4. ARCHITECTURE 3: DYNAMIC CONTEXT-AWARE OPERATOR BRIEFINGS & GENERATIVE SOPs
+====================================================================================================
+
+Eliminating hardcoded SOP templates:
+Instead of if-else statements (e.g., `if 'boycott' in text: recommend Section 3(1)(za)`), the Generative
+LLM dynamically correlates the SC/ST (PoA) Act 1989 Rules with the real-time facts of the case.
+
+Example of Dynamic Generation:
+----------------------------------------------------------------------------------------------------
+Caller Transcript: "गाँव में कुएं पर जाने नहीं दे रहे हैं, बोले कि बर्तन छुओगे तो हाथ तोड़ देंगे।"
+(Translation: "They are not letting us go to the well in the village, saying they will break our hands if we touch the utensils.")
+
+Deterministic Keyword Matcher would output:
+- Linguistic Score: Low (No murder/rape keywords found).
+- Recommendation: Generic grievance redressal.
+
+Non-Deterministic Generative Model outputs:
+- Contextual Assessment: Explicit denial of fundamental access to drinking water and direct physical assault threat based on untouchability practices.
+- Legal Classification: Offence under Section 3(1)(za)(A) & 3(1)(r) of SC/ST (PoA) Act, 1989.
+- Dynamic Action Plan:
+  1. Priority 1 (Within 2 Hours): Alert District Magistrate & Sub-Divisional Magistrate for immediate administrative water restoration order.
+  2. Priority 2 (Police): Dispatch Local Police Station SHO to register FIR under Section 3(1)(za) non-bailable clauses.
+  3. Priority 3 (Victim Relief): Initiate immediate economic relief under Rule 12(4) Schedule Annexure for water denial victims (₹1,00,000 provisional relief).
+
+====================================================================================================
+5. HARDWARE RESOURCE SIZING & DEPLOYMENT BLUEPRINT (TESLA T4 / A10G)
+====================================================================================================
+
+Resource Allocation on a Single 16GB VRAM GPU (Tesla T4 / A10G):
+----------------------------------------------------------------------------------------------------
+Engine Component              Model Architecture        Precision   VRAM Footprint   Inference Latency
+----------------------------------------------------------------------------------------------------
+1. Speech Emotion (SER)       emotion2vec+ Large        FP16        ~1.2 GB          ~45ms / 3s audio
+2. Speech Representations     WavLM-Base-Plus           FP16        ~0.8 GB          ~35ms / 3s audio
+3. Voice Activity (VAD)       Silero VAD v5             ONNX / FP32 ~0.1 GB          ~4ms / chunk
+4. Acoustic Prosody           Librosa + OpenSMILE       CPU         ~0.0 GB (RAM)    ~15ms / chunk
+5. Multilingual STT           Sarvam ASR / Whisper Small FP16       ~1.5 GB          ~120ms / utterance
+6. Non-Deterministic LLM      Llama-3.1-8B-Instruct     4-bit (AWQ) ~5.5 GB          ~18 tokens/sec (T4)
+7. Temporal Cross-Attention   Lightweight Transformer   FP32        ~0.2 GB          ~8ms
+----------------------------------------------------------------------------------------------------
+TOTAL VRAM USAGE:             ~9.3 GB (Well within 16GB VRAM boundary on Tesla T4)
+----------------------------------------------------------------------------------------------------
+
+====================================================================================================
+6. STEP-BY-STEP IMPLEMENTATION CODE BLUEPRINT
+====================================================================================================
+
+Below is the production Python architecture for running the non-deterministic reasoning model locally
+using `vLLM` or `transformers` with 4-bit BitsAndBytes quantization:
+
+```python
+import json
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+
+# 1. Initialize Local Quantized LLM (Llama-3.1-8B-Instruct or Qwen2.5-7B)
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.float16,
+)
+
+MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"  # or "Qwen/Qwen2.5-7B-Instruct"
+tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+model = AutoModelForCausalLM.from_pretrained(
+    MODEL_ID,
+    quantization_config=bnb_config,
+    device_map="auto"
+)
+
+def evaluate_trauma_nondeterministic(transcript_text: str, detected_language: str, prosody_summary: dict):
+    system_prompt = (
+        "You are an AI Trauma & Legal Assessment Engine for the National Helpline Against Atrocities (14566).\n"
+        "Analyze the caller grievance transcript and acoustic distress metrics. Do NOT use keyword searching.\n"
+        "Evaluate implicit threats, caste coercion, social boycott, physical danger, and psychological distress.\n"
+        "Output ONLY a valid JSON object matching the requested schema."
+    )
+
+    user_prompt = f"""
+Transcript: "{transcript_text}"
+Language: {detected_language}
+Acoustic Biomarkers:
+- Mean Pitch: {prosody_summary.get('mean_pitch', 'N/A')} Hz
+- Jitter Perturbation: {prosody_summary.get('jitter', 'N/A')}%
+- Shimmer Perturbation: {prosody_summary.get('shimmer', 'N/A')}%
+- Hesitancy Pauses Count: {prosody_summary.get('pauses', 'N/A')}
+
+Generate a complete non-deterministic assessment in JSON:
+{{
+  "contextual_analysis": "string",
+  "svi_score": float (0-100),
+  "risk_category": "LOW" | "MODERATE" | "HIGH" | "CRITICAL",
+  "detected_atrocity_dimensions": ["string"],
+  "primary_action_required": "string",
+  "urgency_level": "CRITICAL EMERGENCY (< 15 MINS)" | "HIGH PRIORITY (< 2 HOURS)" | "STANDARD (< 24 HOURS)",
+  "officer_executive_brief": "string",
+  "statutory_sop_recommendations": [
+    {{
+      "icon": "🚔 | ⚖️ | 🏥 | 🛡️",
+      "title": "string",
+      "urgency": "string",
+      "action": "string",
+      "statutory_reference": "string"
+    }}
+  ]
+}}
+"""
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ]
+
+    prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
+
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=512,
+            temperature=0.2,  # Low temperature for precise structured reasoning
+            top_p=0.9,
+            do_sample=True,
+        )
+
+    response_text = tokenizer.decode(outputs[0][inputs.input_ids.shape[1]:], skip_special_tokens=True)
+    
+    # Parse JSON
+    try:
+        start_idx = response_text.find('{')
+        end_idx = response_text.rfind('}') + 1
+        return json.loads(response_text[start_idx:end_idx])
+    except Exception as e:
+        return {"raw_response": response_text, "error": str(e)}
+```
+
+====================================================================================================
+7. SUMMARY & RECOMMENDED MIGRATION PHASES
+====================================================================================================
+- Phase 1 (Completed): Full multimodal pipeline with MuRIL NLP, emotion2vec+ SER, Librosa prosody,
+  SQLite database persistence, audio replay API, and live WebSocket multi-device sync.
+- Phase 2 (Current Step): Add local Quantized LLM inference (`vLLM` / `llama.cpp` server) on the T4 GPU
+  to replace dictionary keywords with zero-shot Indic contextual reasoning.
+- Phase 3: Implement WebRTC continuous sliding-window streaming for live call audio transcription
+  and stress meter visualization updating every 500 milliseconds.
+
+====================================================================================================
+END OF TECHNICAL REPORT
+====================================================================================================

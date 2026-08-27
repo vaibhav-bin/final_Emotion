@@ -3,11 +3,12 @@ from pathlib import Path
 import shutil
 import subprocess
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
-from fastapi import FastAPI, UploadFile, File, Request, Query
+from fastapi import FastAPI, UploadFile, File, Request, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 
 import db
 from emotion_model import predict_emotion
@@ -18,18 +19,18 @@ from muril_analyzer import analyze_transcript_semantics
 from multimodal_fusion import align_and_fuse_multimodal
 from trauma_classifier import classify_trauma_and_svi
 from recommendations import generate_sop_recommendations
+from translator import translate_to_english
+from llm_reasoner import assess_trauma_nondeterministic
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("NHAA_TriageApp")
 
-from fastapi.middleware.cors import CORSMiddleware
-
 # ============================================================
-# APP INITIALIZATION
+# APP INITIALIZATION & WEBSOCKET SYNC
 # ============================================================
 app = FastAPI(
     title="NHAA Real-Time Stress & Trauma Assessment Module (14566)",
-    version="2.1.0",
+    version="2.2.0",
     description="Multimodal AI-assisted Triage & Vulnerability Assessment for SC/ST Helpline (PS 26093)",
 )
 
@@ -40,6 +41,29 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class ConnectionManager:
+    """Manages real-time WebSockets for multi-device dashboard synchronization."""
+    def __init__(self):
+        self.active_connections: Set[WebSocket] = set()
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.add(websocket)
+        logger.info(f"WebSocket client connected. Total clients: {len(self.active_connections)}")
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.discard(websocket)
+        logger.info(f"WebSocket client disconnected. Total clients: {len(self.active_connections)}")
+
+    async def broadcast(self, message: dict):
+        for connection in list(self.active_connections):
+            try:
+                await connection.send_json(message)
+            except Exception:
+                self.active_connections.discard(connection)
+
+manager = ConnectionManager()
 
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "uploads"
@@ -124,6 +148,37 @@ async def get_case_detail_endpoint(case_id: str):
 @app.patch("/api/cases/{case_id}/status")
 async def patch_case_status_endpoint(case_id: str, request: Request):
     """Update administrative status and officer notes for a case."""
+@app.websocket("/api/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time live synchronization across devices."""
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Keep-alive heartbeat listener
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception:
+        manager.disconnect(websocket)
+
+
+@app.post("/api/translate")
+async def translate_endpoint(request: Request):
+    """Translate Indic languages (Hindi, Tamil, etc.) to English."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    text = body.get("text", "")
+    source_lang = body.get("source_lang", "auto")
+    result = translate_to_english(text, source_lang=source_lang)
+    return result
+
+
+@app.patch("/api/cases/{case_id}/status")
+async def patch_case_status_endpoint(case_id: str, request: Request):
+    """Update administrative status and officer notes for a case."""
     try:
         body = await request.json()
     except Exception:
@@ -136,6 +191,14 @@ async def patch_case_status_endpoint(case_id: str, request: Request):
     if not updated:
         return JSONResponse(status_code=404, content={"success": False, "error": f"Case '{case_id}' not found."})
 
+    # Broadcast update event to all connected devices
+    await manager.broadcast({
+        "event": "CASE_UPDATED",
+        "case_id": case_id,
+        "status": status,
+        "officer_notes": notes,
+    })
+
     return {"success": True, "case_id": case_id, "status": status, "officer_notes": notes}
 
 
@@ -145,6 +208,13 @@ async def delete_case_endpoint(case_id: str):
     deleted = db.delete_case(case_id)
     if not deleted:
         return JSONResponse(status_code=404, content={"success": False, "error": f"Case '{case_id}' not found."})
+
+    # Broadcast delete event to all connected devices
+    await manager.broadcast({
+        "event": "CASE_DELETED",
+        "case_id": case_id,
+    })
+
     return {"success": True, "case_id": case_id, "deleted": True}
 
 
@@ -324,7 +394,7 @@ async def analyze(
         }
 
     # --------------------------------------------------------
-    # 10. Statutory SOP Recommendations Engine
+    # 10. Non-Deterministic Generative Context & Statutory SOP Engine
     # --------------------------------------------------------
     try:
         sop_data = generate_sop_recommendations(
@@ -335,6 +405,54 @@ async def analyze(
     except Exception as exc:
         logger.error(f"SOP generation failed: {exc}")
         sop_data = {"recommendations": [], "admin_executive_brief": "", "urgency_level": "Standard", "primary_action": "Review case"}
+
+    # Execute Phase 2 Non-Deterministic Generative Reasoner
+    llm_reasoning = None
+    try:
+        llm_reasoning = assess_trauma_nondeterministic(
+            transcript_text=transcript_text,
+            language_code=detected_lang,
+            prosody_summary=prosody_data,
+            emotion_summary=emotion_results,
+        )
+    except Exception as llm_exc:
+        logger.warning(f"LLM reasoner notice: {llm_exc}")
+
+    # Determine final blended SVI & Risk
+    if llm_reasoning and "svi_score" in llm_reasoning:
+        llm_svi = float(llm_reasoning["svi_score"])
+        # Blend: 70% Generative Context Reasoner + 30% Multimodal Acoustic/SER SVI
+        final_svi = round(0.70 * llm_svi + 0.30 * classification_result["svi_score"], 1)
+        final_risk = llm_reasoning.get("risk_category", classification_result["risk_category"])
+        if final_svi >= 80:
+            final_risk = "CRITICAL"
+        elif final_svi >= 65:
+            final_risk = "HIGH"
+        elif final_svi >= 40:
+            final_risk = "MODERATE"
+        else:
+            final_risk = "LOW"
+
+        final_recommendations = llm_reasoning.get("statutory_recommendations") or sop_data.get("recommendations", [])
+        final_admin_brief = llm_reasoning.get("officer_brief") or sop_data.get("admin_executive_brief", "")
+        final_primary_action = llm_reasoning.get("primary_action") or sop_data.get("primary_action", "")
+        final_urgency = llm_reasoning.get("urgency_level") or sop_data.get("urgency_level", "STANDARD")
+        
+        # Merge explainability nodes
+        llm_nodes = llm_reasoning.get("explainability_nodes", [])
+        formatted_llm_nodes = [
+            {"source": n.get("title", "Cognitive Reasoning Node"), "sign": n.get("description", ""), "type": "llm_reasoner"}
+            for n in llm_nodes
+        ]
+        final_detected_signs = formatted_llm_nodes + classification_result.get("detected_signs", [])
+    else:
+        final_svi = classification_result["svi_score"]
+        final_risk = classification_result["risk_category"]
+        final_recommendations = sop_data.get("recommendations", [])
+        final_admin_brief = sop_data.get("admin_executive_brief", "")
+        final_primary_action = sop_data.get("primary_action", "")
+        final_urgency = sop_data.get("urgency_level", "STANDARD")
+        final_detected_signs = classification_result.get("detected_signs", [])
 
     # --------------------------------------------------------
     # 11. Cleanup temporary raw file (Ephemeral Privacy Policy)
@@ -357,6 +475,13 @@ async def analyze(
         logger.warning(f"Could not persist audio file for case {case_id}: {copy_err}")
         saved_audio_path = Path(analysis_path)
 
+    risk_colors = {
+        "CRITICAL": "#18181b",
+        "HIGH": "#dc2626",
+        "MODERATE": "#d97706",
+        "LOW": "#16a34a",
+    }
+
     response_payload = {
         "success": True,
         "filename": file.filename,
@@ -365,12 +490,13 @@ async def analyze(
         
         # Core Triage Outputs
         "svi": {
-            "score": classification_result["svi_score"],
-            "raw_score": classification_result.get("raw_svi", classification_result["svi_score"]),
-            "risk_category": classification_result["risk_category"],
-            "risk_color": classification_result["risk_color"],
+            "score": final_svi,
+            "raw_score": final_svi,
+            "risk_category": final_risk,
+            "risk_color": risk_colors.get(final_risk, "#d97706"),
             "sub_scores": classification_result.get("sub_scores", {}),
             "safety_overrides": classification_result.get("safety_overrides", []),
+            "reasoning_mode": "NON_DETERMINISTIC_INDIC_LLM" if llm_reasoning else "MULTIMODAL_HEURISTIC",
         },
         "classification": {
             "predicted_class": classification_result["predicted_class"],
@@ -378,15 +504,16 @@ async def analyze(
         },
 
         # Explainability & Provenance
-        "detected_signs": classification_result.get("detected_signs", []),
-        "recommendations": sop_data.get("recommendations", []),
-        "admin_executive_brief": sop_data.get("admin_executive_brief", ""),
-        "urgency_level": sop_data.get("urgency_level", "STANDARD"),
-        "primary_action": sop_data.get("primary_action", ""),
+        "detected_signs": final_detected_signs,
+        "recommendations": final_recommendations,
+        "admin_executive_brief": final_admin_brief,
+        "urgency_level": final_urgency,
+        "primary_action": final_primary_action,
 
         # Multimodal Component Data
         "transcription": {
             "text": transcript_text,
+            "translated_text": translate_to_english(transcript_text, source_lang=detected_lang).get("translated_text", transcript_text),
             "language": detected_lang,
             "request_id": stt_result.get("request_id", ""),
             "aligned_words": fusion_data.get("aligned_words", []),
@@ -412,5 +539,20 @@ async def analyze(
         db.save_case(response_payload, audio_path=str(saved_audio_path))
     except Exception as db_exc:
         logger.error(f"Failed to auto-save case {response_payload['case_id']} to database: {db_exc}")
+
+    # Real-time WebSocket multi-device sync
+    try:
+        await manager.broadcast({
+            "event": "CASE_CREATED",
+            "case_id": case_id,
+            "risk_category": response_payload["svi"]["risk_category"],
+            "svi_score": response_payload["svi"]["score"],
+            "language": detected_lang,
+            "time": "Just now",
+            "filename": file.filename,
+            "case": response_payload,
+        })
+    except Exception as ws_err:
+        logger.warning(f"WebSocket broadcast error: {ws_err}")
 
     return response_payload

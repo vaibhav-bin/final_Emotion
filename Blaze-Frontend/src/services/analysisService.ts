@@ -92,6 +92,7 @@ export function transformBackendReportToCase(data: any, customId?: string): Case
 
     // 4. Map Transcript & Word Highlights
     const transcriptText: string = data.transcription?.text || 'Recorded grievance audio received.';
+    const translatedText: string = data.transcription?.translated_text || '';
     const alignedWords: any[] = data.transcription?.aligned_words || [];
     let transcript: TranscriptItem[] = [];
 
@@ -123,6 +124,25 @@ export function transformBackendReportToCase(data: any, customId?: string): Case
         transcript = [
             { timestamp: '00:02', speaker: 'Caller', text: transcriptText, indicator: { type: 'trauma', label: 'Grievance Narrative', severity: 'HIGH' } },
         ];
+    }
+
+    // 4b. Map English Translated Transcript
+    let translatedTranscript: TranscriptItem[] = [];
+    if (translatedText) {
+        const transSentences = translatedText.split(/[,।.]/).filter(s => s.trim().length > 0);
+        translatedTranscript = transSentences.map((st, i) => {
+            const origItem = transcript[i] || transcript[0];
+            return {
+                timestamp: origItem?.timestamp || '00:02',
+                speaker: origItem?.speaker || 'Caller',
+                text: st.trim(),
+                indicator: origItem?.indicator,
+            };
+        });
+    }
+
+    if (translatedTranscript.length === 0 && transcript.length > 0) {
+        translatedTranscript = transcript;
     }
 
     // 5. Map Explainability Points
@@ -187,6 +207,8 @@ export function transformBackendReportToCase(data: any, customId?: string): Case
         emotions,
         vulnerabilities,
         transcript,
+        translatedTranscript,
+        translatedText,
         explainability,
         subScores,
         safetyOverrides: overrides,
@@ -463,5 +485,67 @@ export const analysisService = {
         localStorage.setItem(QUEUE_KEY, JSON.stringify(updatedIds));
 
         return true;
+    },
+
+    async translateText(text: string, sourceLang: string = 'auto'): Promise<string> {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/translate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, source_lang: sourceLang }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                return data.translated_text || text;
+            }
+        } catch (e) {
+            console.warn('Translation API error:', e);
+        }
+        return text;
+    },
+
+    subscribeToLiveUpdates(callback: (event: any) => void): () => void {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/api/ws`;
+        let ws: WebSocket | null = null;
+        let isClosed = false;
+
+        const connect = () => {
+            if (isClosed) return;
+            try {
+                ws = new WebSocket(wsUrl);
+                ws.onmessage = (msg) => {
+                    try {
+                        const data = JSON.parse(msg.data);
+                        callback(data);
+                    } catch (e) {
+                        console.error('WS parse error:', e);
+                    }
+                };
+                ws.onclose = () => {
+                    if (!isClosed) setTimeout(connect, 3000);
+                };
+                ws.onerror = () => {
+                    if (ws) ws.close();
+                };
+            } catch (err) {
+                console.warn('WebSocket connect error, falling back to polling:', err);
+            }
+        };
+
+        connect();
+
+        // Background polling fallback every 4 seconds
+        const pollTimer = setInterval(() => {
+            this.fetchCasesAsync().then((cases) => {
+                callback({ event: 'POLL_SYNC', cases });
+            }).catch(() => {});
+        }, 4000);
+
+        return () => {
+            isClosed = true;
+            clearInterval(pollTimer);
+            if (ws) ws.close();
+        };
     },
 };

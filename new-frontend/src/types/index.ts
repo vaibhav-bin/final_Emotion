@@ -11,6 +11,7 @@ export interface TranscriptItem {
     timestamp: string;
     speaker: 'Caller' | 'Operator';
     text: string;
+    translatedText?: string;
     indicator?: {
         type: 'fear' | 'intimidation' | 'vulnerability' | 'depression' | 'suicide' | 'isolation' | 'trauma';
         label: string;
@@ -79,6 +80,8 @@ export interface CaseAssessment {
     emotions: EmotionMetric[];
     vulnerabilities: VulnerabilityMetric[];
     transcript: TranscriptItem[];
+    translatedTranscript?: TranscriptItem[];
+    translatedText?: string;
     explainability: ExplainabilityPoint[];
     subScores?: SubScores;
     safetyOverrides?: string[];

@@ -26,6 +26,16 @@ const VoiceAnalysis: React.FC = () => {
         }).catch(() => {
             setCases(analysisService.getCases());
         });
+
+        const unsubscribe = analysisService.subscribeToLiveUpdates((_evt) => {
+            analysisService.fetchCasesAsync().then((fetched) => {
+                setCases(fetched);
+            });
+        });
+
+        return () => {
+            unsubscribe();
+        };
     }, []);
 
     const handleSelectCase = (caseId: string) => {

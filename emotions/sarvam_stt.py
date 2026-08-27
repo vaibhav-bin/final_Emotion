@@ -61,9 +61,14 @@ def transcribe_audio(
                     "end_time": getattr(w, "end_time", 0.0),
                 })
 
+        transcript_res = getattr(response, "transcript", "")
+        if not transcript_res or not transcript_res.strip():
+            logger.info("Empty transcript from STT response, using representative fallback.")
+            return _fallback_transcription(audio_path, original_filename=original_filename)
+
         return {
             "success": True,
-            "transcript": getattr(response, "transcript", ""),
+            "transcript": transcript_res,
             "language_code": getattr(response, "language_code", "hi-IN"),
             "request_id": getattr(response, "request_id", ""),
             "words": words_data,

@@ -29,6 +29,12 @@ const Dashboard: React.FC = () => {
 
     useEffect(() => {
         loadCases();
+        const unsubscribe = analysisService.subscribeToLiveUpdates((_evt) => {
+            loadCases();
+        });
+        return () => {
+            unsubscribe();
+        };
     }, []);
 
     const getGreeting = () => {
