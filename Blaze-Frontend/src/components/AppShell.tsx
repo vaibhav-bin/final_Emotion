@@ -98,7 +98,7 @@ const AppShell: React.FC<AppShellProps> = ({ children }) => {
                                 <Shield size={10} className="text-emerald-500" />
                                 <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Sys.Secure</span>
                             </div>
-                            <span className="text-[9px] font-mono text-zinc-400 mt-1">{currentTime.toISOString().split('T')[1].slice(0, 8)} UTC</span>
+                            <span className="text-[9px] font-mono text-zinc-400 mt-1">{currentTime.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })} IST</span>
                         </div>
 
                         {/* Profile Pill */}

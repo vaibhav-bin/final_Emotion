@@ -16,6 +16,32 @@ const API_BASE_URL = ''; // Relative path leverages Vite proxy or direct same-or
 const STORAGE_PREFIX = 'nhaa_case_';
 const QUEUE_KEY = 'nhaa_active_cases';
 
+// Helper function to format Date object into IST (Indian Standard Time) string (HH:MM)
+export function formatToISTTime(date: Date = new Date()): string {
+    return date.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
+// Helper function to parse backend UTC timestamps into IST string (HH:MM)
+export function parseCreatedAtToIST(dateStr?: string): string {
+    if (!dateStr) return 'Recent';
+    try {
+        const utcStr = dateStr.includes('T') || dateStr.endsWith('Z') ? dateStr : dateStr.replace(' ', 'T') + 'Z';
+        const d = new Date(utcStr);
+        if (isNaN(d.getTime())) return dateStr.substring(11, 16);
+        return d.toLocaleTimeString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    } catch {
+        return dateStr.substring(11, 16);
+    }
+}
+
 // Transform backend JSON response from /analyze or /api/cases/:id into frontend CaseAssessment
 export function transformBackendReportToCase(data: any, customId?: string): CaseAssessment {
     const caseId = data.case_id || customId || `NHAA-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -197,7 +223,7 @@ export function transformBackendReportToCase(data: any, customId?: string): Case
 
     return {
         id: caseId,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: formatToISTTime(),
         language: data.transcription?.language || 'Hindi (hi-IN)',
         duration: durationStr,
         svi: sviScore,
@@ -265,7 +291,7 @@ export const analysisService = {
                 } else {
                     assessment = {
                         id: c.case_id,
-                        time: c.created_at ? c.created_at.substring(11, 16) : 'Recent',
+                        time: parseCreatedAtToIST(c.created_at),
                         language: c.language || 'hi-IN',
                         duration: '04:30',
                         svi: Math.round(c.svi_score || 50),
@@ -381,7 +407,7 @@ export const analysisService = {
 
         const newCase: CaseAssessment = {
             id: caseId,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            time: formatToISTTime(),
             language,
             duration: durationStr,
             svi: 0,
@@ -450,7 +476,7 @@ export const analysisService = {
         const item = this.getCaseById(id);
         if (!item) return null;
 
-        const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const nowTime = formatToISTTime();
         const existingLogs = item.actionLog || [
             { timestamp: item.time, action: 'AI Assessment Generated', actor: 'Sahaaya Multimodal AI Head', details: `Initial SVI: ${item.svi}/100 (${item.risk} Risk)` }
         ];
